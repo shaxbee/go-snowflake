@@ -19,9 +19,6 @@ package snowflake
 import (
 	"fmt"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestSnowflake(t *testing.T) {
@@ -30,18 +27,32 @@ func TestSnowflake(t *testing.T) {
 
 	fmt.Println("test")
 	sf, err := New(0)
-	require.NotNil(t, sf)
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatal("Failed to create snowflake generator")
+	}
 
 	prev := int64(0)
 	for i := 0; i < total; i++ {
 		id := <-sf
 
-		assert.True(t, id > prev, "Snowflake is not monotonic")
+		if id <= prev {
+			t.Errorf("Snowflake is not monotonic: %d <= %d", id, prev)
+		}
 		prev = id
 
 		_, ok := ids[id]
-		require.False(t, ok, "Duplicate snowflake")
+		if ok {
+			t.Errorf("Duplicate snowflake: %d", id)
+		}
 		ids[id] = struct{}{}
+	}
+}
+
+func TestNextMillisec(t *testing.T) {
+	t1 := timestamp()
+	t2 := nextMillisec(t1)
+
+	if t2 <= t1 {
+		t.Errorf("Time was not advanced to next millisecond")
 	}
 }
