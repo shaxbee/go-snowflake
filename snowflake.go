@@ -44,7 +44,7 @@ var (
 type SnowFlake <-chan int64
 
 // New constructs generator for snowflake IDs
-// ErrInvalidWorkerID is returned if WorkerID is not fitting in 10 bits
+// ErrInvalidWorkerID is returned if WorkerID is not within [0, 1024)
 func New(workerID uint64) (SnowFlake, error) {
 	if workerID < 0 || workerID > maxWorkerID {
 		return nil, ErrInvalidWorkerID
