@@ -36,15 +36,21 @@ var (
 )
 
 // SnowFlake is a monotonic ID generator inspired by Twitter Snowflake
-type SnowFlake <-chan uint64
+// ID is composed of:
+//   - unused sign bit
+//   - 41 bits of timestamp
+//   - 10 bits of worker ID
+//   - 12 bits of sequence number
+type SnowFlake <-chan int64
 
 // New constructs generator for snowflake IDs
+// ErrInvalidWorkerID is returned if WorkerID is not fitting in 10 bits
 func New(workerID uint64) (SnowFlake, error) {
 	if workerID < 0 || workerID > maxWorkerID {
 		return nil, ErrInvalidWorkerID
 	}
 
-	sf := make(chan uint64)
+	sf := make(chan int64)
 	go func() {
 		last := timestamp()
 		seq := uint64(0)
@@ -65,7 +71,7 @@ func New(workerID uint64) (SnowFlake, error) {
 				seq++
 			}
 
-			id := (ts << timestampOffset) | (workerID << workerIDOffset) | seq
+			id := int64((ts << timestampOffset) | (workerID << workerIDOffset) | seq)
 			sf <- id
 		}
 	}()

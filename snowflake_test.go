@@ -26,14 +26,14 @@ import (
 
 func TestSnowflake(t *testing.T) {
 	total := 1000000
-	ids := make(map[uint64]struct{})
+	ids := make(map[int64]struct{})
 
 	fmt.Println("test")
 	sf, err := New(0)
 	require.NotNil(t, sf)
 	require.NoError(t, err)
 
-	prev := uint64(0)
+	prev := int64(0)
 	for i := 0; i < total; i++ {
 		id := <-sf
 
