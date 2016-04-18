@@ -24,6 +24,7 @@ import (
 const (
 	workerIDOffset  = 12
 	timestampOffset = 22
+	maxTimestamp    = 1<<41 - 1
 	maxWorkerID     = 1<<10 - 1
 	maxSequence     = 1<<12 - 1
 )
@@ -31,7 +32,7 @@ const (
 var (
 	// ErrInvalidWorkerID indicates that worker id is out of valid bounds
 	ErrInvalidWorkerID = errors.New("Worker ID is not within bounds")
-	since              = time.Date(2012, 1, 0, 0, 0, 0, 0, time.UTC).UnixNano() - nanotime()
+	since              = time.Date(2012, 1, 0, 0, 0, 0, 0, time.UTC).UnixNano()
 )
 
 // SnowFlake is a monotonic ID generator inspired by Twitter Snowflake
@@ -50,18 +51,15 @@ func New(workerID uint64) (SnowFlake, error) {
 		for {
 			ts := timestamp()
 			if ts < last {
-				panic("Time is not monotonic.")
+				ts = nextMillisec(last)
 			}
 
 			if ts != last {
 				seq = 0
 				last = ts
 			} else if seq == maxSequence {
-				for ts == timestamp() {
-					time.Sleep(100 * time.Microsecond)
-				}
+				ts = nextMillisec(ts)
 				seq = 0
-				ts = timestamp()
 				last = ts
 			} else {
 				seq++
@@ -75,6 +73,14 @@ func New(workerID uint64) (SnowFlake, error) {
 	return sf, nil
 }
 
+func nextMillisec(ts uint64) uint64 {
+	i := timestamp()
+	for ; i <= ts; i = timestamp() {
+		time.Sleep(100 * time.Microsecond)
+	}
+	return i
+}
+
 func timestamp() uint64 {
-	return uint64((nanotime() - since) / int64(time.Millisecond))
+	return (uint64(time.Now().UnixNano()-since) / uint64(time.Millisecond)) & maxTimestamp
 }
