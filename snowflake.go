@@ -41,42 +41,43 @@ var (
 //   - 41 bits of timestamp
 //   - 10 bits of worker ID
 //   - 12 bits of sequence number
-type SnowFlake <-chan int64
+type Snowflake <-chan int64
 
 // New constructs generator for snowflake IDs
 // ErrInvalidWorkerID is returned if WorkerID is not within [0, 1024)
-func New(workerID uint64) (SnowFlake, error) {
+func New(workerID uint64) (Snowflake, error) {
 	if workerID < 0 || workerID > maxWorkerID {
 		return nil, ErrInvalidWorkerID
 	}
 
 	sf := make(chan int64)
-	go func() {
-		last := timestamp()
-		seq := uint64(0)
-		for {
-			ts := timestamp()
-			if ts < last {
-				ts = nextMillisec(last)
-			}
-
-			if ts != last {
-				seq = 0
-				last = ts
-			} else if seq == maxSequence {
-				ts = nextMillisec(ts)
-				seq = 0
-				last = ts
-			} else {
-				seq++
-			}
-
-			id := int64((ts << timestampOffset) | (workerID << workerIDOffset) | seq)
-			sf <- id
-		}
-	}()
-
+	go generator(workerID, sf)
 	return sf, nil
+}
+
+func generator(workerID uint64, c chan<- int64) {
+	last := timestamp()
+	seq := uint64(0)
+	for {
+		ts := timestamp()
+		if ts < last {
+			ts = nextMillisec(last)
+		}
+
+		if ts != last {
+			seq = 0
+			last = ts
+		} else if seq == maxSequence {
+			ts = nextMillisec(ts)
+			seq = 0
+			last = ts
+		} else {
+			seq++
+		}
+
+		id := int64((ts << timestampOffset) | (workerID << workerIDOffset) | seq)
+		c <- id
+	}
 }
 
 func nextMillisec(ts uint64) uint64 {
